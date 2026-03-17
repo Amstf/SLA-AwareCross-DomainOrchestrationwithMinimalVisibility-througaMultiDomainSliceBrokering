@@ -4,3 +4,6 @@
 [submodule "Core-Network"]
 	path = Core-Network
 	url = https://github.com/Amstf/Core-Network.git
+[submodule "OSC-RIC-Network"]
+	path = OSC-RIC-Network
+	url = https://github.com/Amstf/OSC-RIC-Network.git
