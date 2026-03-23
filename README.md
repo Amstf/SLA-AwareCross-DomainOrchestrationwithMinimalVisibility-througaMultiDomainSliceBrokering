@@ -82,9 +82,9 @@ Expected entry:
 Enter the container and launch the core network stack:
 
 ```bash
-lxc exec CORE-NETWORK -- bash
+lxc exec CORE-NETWORK \bin\bash
 cd /root/Core-Network/oai-cn5g
-./start_cn.sh -m rfsim    # or: -m usrp for Colosseum
+./start_cn.sh -m rfsim    
 ```
 
 The script recreates the Docker bridge network, tears down any previous deployment, starts all NF containers, and injects UPF tunnel gateway addresses.
