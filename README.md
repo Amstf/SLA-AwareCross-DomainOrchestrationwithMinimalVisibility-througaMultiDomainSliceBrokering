@@ -19,7 +19,7 @@ git clone --recurse-submodules <repo-url>
 git submodule update --init --recursive
 ```
 
-**LXC must be configured on the host.** Refer to `<add-your-lxc-setup-doc-here>`.
+**LXC must be configured on the host.** Refer to `<add-lxc-setup-doc-here>`.
 
 **GitHub SSH key** must be generated and registered before running any setup script. Refer to the Pre-step in each component's `src/README.md`.
 
