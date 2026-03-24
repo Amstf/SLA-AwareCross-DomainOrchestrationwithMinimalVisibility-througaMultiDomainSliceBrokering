@@ -1,12 +1,13 @@
 # 5G Testbed Setup Guide
 
-This guide covers the full deployment of the 5G testbed across three components:
+This guide covers the full deployment of the 5G testbed across four components:
 
-| Component | Container | Status |
-|-----------|-----------|--------|
-| Core Network (OAI CN5G — network slicing) | `CORE-NETWORK` | ✅ Documented |
-| gNB (OAI NR with E2 agent) | `RAN-CONTAINER` | 🚧 Coming soon |
-| nearRT-RIC (OSC RIC platform + xApp) | `RIC-CONTAINER` | 🚧 Coming soon |
+| Component | Submodule | Container | Status |
+|-----------|-----------|-----------|--------|
+| Core Network (OAI CN5G — network slicing) | `Core-Network` | `CORE-NETWORK` | ✅ Documented |
+| gNB (OAI NR with E2 agent) | `OAI-GNB-Network` | `RAN-CONTAINER` | 🚧 Coming soon |
+| nearRT-RIC (OSC RIC platform) | `OSC-RIC-Network` | `RIC-CONTAINER` | 🚧 Coming soon |
+| MVNO Broker xApp | `MVNO-BROKER` | — (runs on RIC) | 🚧 Coming soon |
 
 ---
 
@@ -19,7 +20,7 @@ git clone --recurse-submodules <repo-url>
 git submodule update --init --recursive
 ```
 
-**LXC must be configured on the host.** Refer to `<add-lxc-setup-doc-here>`.
+**LXC must be configured on the host.** Refer to `<add-your-lxc-setup-doc-here>`.
 
 **GitHub SSH key** must be generated and registered before running any setup script. Refer to the Pre-step in each component's `src/README.md`.
 
@@ -82,9 +83,9 @@ Expected entry:
 Enter the container and launch the core network stack:
 
 ```bash
-lxc exec CORE-NETWORK \bin\bash
+lxc exec CORE-NETWORK -- bash
 cd /root/Core-Network/oai-cn5g
-./start_cn.sh -m rfsim    
+./start_cn.sh -m rfsim    # or: -m usrp for Colosseum
 ```
 
 The script recreates the Docker bridge network, tears down any previous deployment, starts all NF containers, and injects UPF tunnel gateway addresses.
@@ -146,6 +147,8 @@ Expected addresses:
 - `oai-upf-slice1` → `12.1.1.1/24`
 - `oai-upf-slice2` → `12.1.2.1/24`
 
+> If a container is not healthy or the UPF addresses are missing, inspect logs with `docker logs <container-name>` before proceeding.
+
 The AMF is reachable at `192.168.70.132`. The gNB must point to this address for N2 connectivity.
 
 ---
@@ -154,14 +157,82 @@ The AMF is reachable at `192.168.70.132`. The gNB must point to this address for
 
 > 🚧 Coming soon. Will cover LXC container provisioning, OAI gNB compilation, and launch in both `rfsim` and `usrp` modes.
 >
-> Refer to [`OAI-RAN-Network/src/README.md`](OAI-RAN-Network/src/README.md) and [`OAI-RAN-Network/oai_ran/README.md`](OAI-RAN-Network/oai_ran/README.md) in the meantime.
+> Refer to [`OAI-GNB-Network/src/README.md`](OAI-GNB-Network/src/README.md) and [`OAI-GNB-Network/oai_ran/README.md`](OAI-GNB-Network/oai_ran/README.md) in the meantime.
 
 ---
 
 ## 3. nearRT-RIC Setup
 
-> 🚧 Coming soon. Will cover LXC container provisioning, OSC RIC platform deployment, and xApp onboarding.
+> 🚧 Coming soon. Will cover LXC container provisioning, OSC RIC platform deployment, and xApp onboarding via `dms_cli`.
 >
 > Refer to [`OSC-RIC-Network/src/README.md`](OSC-RIC-Network/src/README.md) in the meantime.
 
 ---
+
+## 4. MVNO Broker xApp
+
+The MVNO Broker is an O-RAN nearRT-RIC xApp implementing a tick-based multi-operator resource brokering control loop. It runs on top of the deployed RIC (Section 3) and connects to the gNB E2 agent (Section 2) to receive per-UE RAN indications and actuate rate and slice control decisions.
+
+> 🚧 Deployment integration into this guide is coming soon. This section will cover xApp onboarding via `dms_cli`, MongoDB setup, launch configuration, and end-to-end verification with a running gNB and RIC.
+
+### Overview
+
+At each tick, the control loop performs the following operations:
+
+1. Receives per-UE RAN indications from the gNB E2 agent over UDP / Protocol Buffers
+2. Aggregates per-UE KPIs (throughput, BLER, MCS, PRBs, RSRP) into a system snapshot
+3. Invokes the broker decision engine in one of three operating modes:
+
+| Mode | Flag | Behavior |
+|------|------|----------|
+| Dynamic (SLA + cost) | *(default)* | SLA steering restores compliance when violated; cost rebalancing shifts load to cheaper domains during safe intervals |
+| SLA-only | `--sla` | SLA steering only; cost rebalancing disabled |
+| Static | `--static` | Fixed UE placement; no steering or actuation |
+
+4. Actuates rate caps and slice assignments back to the gNB
+5. Persists per-tick metrics and decisions to MongoDB (`Paper1` database)
+
+### Prerequisites
+
+- Python 3.8
+- MongoDB instance reachable from the xApp host:
+  ```bash
+  export MONGODB_URI="mongodb://<host>:<port>"
+  ```
+- Python dependencies:
+  ```bash
+  pip install -r requirements.txt
+  ```
+
+### Configuration
+
+Three files in `MVNO-BROKER/conf/` control broker behavior:
+
+| File | Purpose |
+|------|---------|
+| `config_loop.json` | gNB targets, slice identity (SST/SD), broker tuning parameters, SLA thresholds |
+| `background_traffic_gnb.json` | Capacity-generator parameters, phase progression, pricing coefficients per domain |
+| `ue_placement.conf` | UE-to-gNB mapping: pod name, port, role (active/ghost), initial rate demand |
+
+Refer to [`MVNO-BROKER/conf/configuration_reference.md`](MVNO-BROKER/conf/configuration_reference.md) for the full parameter reference.
+
+### Launch
+
+```bash
+cd MVNO-BROKER
+python3 xapp_main.py \
+  --config conf/config_loop.json \
+  --traffic conf/background_traffic_gnb.json \
+  --ue-placement conf/ue_placement.conf
+```
+
+Refer to [`MVNO-BROKER/README.md`](MVNO-BROKER/README.md) for the full CLI reference, MongoDB persistence schema, and broker timing details.
+
+---
+
+## Notes
+
+- The container base image runs **Ubuntu 18.04 (Bionic)** — this is expected.
+- The `apt` lock warning (`E: Could not get lock`) on first container run is benign; the script retries automatically.
+- All Docker images are pulled inside the container during provisioning. Internet access from inside the container is required.
+- The `-m rfsim` mode binds UPF gateways to `eth0`. On Colosseum with USRP hardware, use `-m usrp` to bind to `tun0` instead.
