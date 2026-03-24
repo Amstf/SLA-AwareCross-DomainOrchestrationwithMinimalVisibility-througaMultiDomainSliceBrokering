@@ -171,62 +171,9 @@ The AMF is reachable at `192.168.70.132`. The gNB must point to this address for
 
 ## 4. MVNO Broker xApp
 
-The MVNO Broker is an O-RAN nearRT-RIC xApp implementing a tick-based multi-operator resource brokering control loop. It runs on top of the deployed RIC (Section 3) and connects to the gNB E2 agent (Section 2) to receive per-UE RAN indications and actuate rate and slice control decisions.
-
-> 🚧 Deployment integration into this guide is coming soon. This section will cover xApp onboarding via `dms_cli`, MongoDB setup, launch configuration, and end-to-end verification with a running gNB and RIC.
-
-### Overview
-
-At each tick, the control loop performs the following operations:
-
-1. Receives per-UE RAN indications from the gNB E2 agent over UDP / Protocol Buffers
-2. Aggregates per-UE KPIs (throughput, BLER, MCS, PRBs, RSRP) into a system snapshot
-3. Invokes the broker decision engine in one of three operating modes:
-
-| Mode | Flag | Behavior |
-|------|------|----------|
-| Dynamic (SLA + cost) | *(default)* | SLA steering restores compliance when violated; cost rebalancing shifts load to cheaper domains during safe intervals |
-| SLA-only | `--sla` | SLA steering only; cost rebalancing disabled |
-| Static | `--static` | Fixed UE placement; no steering or actuation |
-
-4. Actuates rate caps and slice assignments back to the gNB
-5. Persists per-tick metrics and decisions to MongoDB (`Paper1` database)
-
-### Prerequisites
-
-- Python 3.8
-- MongoDB instance reachable from the xApp host:
-  ```bash
-  export MONGODB_URI="mongodb://<host>:<port>"
-  ```
-- Python dependencies:
-  ```bash
-  pip install -r requirements.txt
-  ```
-
-### Configuration
-
-Three files in `MVNO-BROKER/conf/` control broker behavior:
-
-| File | Purpose |
-|------|---------|
-| `config_loop.json` | gNB targets, slice identity (SST/SD), broker tuning parameters, SLA thresholds |
-| `background_traffic_gnb.json` | Capacity-generator parameters, phase progression, pricing coefficients per domain |
-| `ue_placement.conf` | UE-to-gNB mapping: pod name, port, role (active/ghost), initial rate demand |
-
-Refer to [`MVNO-BROKER/conf/configuration_reference.md`](MVNO-BROKER/conf/configuration_reference.md) for the full parameter reference.
-
-### Launch
-
-```bash
-cd MVNO-BROKER
-python3 xapp_main.py \
-  --config conf/config_loop.json \
-  --traffic conf/background_traffic_gnb.json \
-  --ue-placement conf/ue_placement.conf
-```
-
-Refer to [`MVNO-BROKER/README.md`](MVNO-BROKER/README.md) for the full CLI reference, MongoDB persistence schema, and broker timing details.
+> 🚧 Coming soon. Will cover xApp onboarding, MongoDB setup, launch configuration, and end-to-end verification with a running gNB and RIC.
+>
+> Refer to [`MVNO-BROKER/README.md`](MVNO-BROKER/README.md) in the meantime.
 
 ---
 
