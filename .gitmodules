@@ -7,3 +7,6 @@
 [submodule "OSC-RIC-Network"]
 	path = OSC-RIC-Network
 	url = https://github.com/Amstf/OSC-RIC-Network.git
+[submodule "MVNO-BROKER"]
+	path = MVNO-BROKER
+	url = https://github.com/Amstf/MVNO-BROKER.git
